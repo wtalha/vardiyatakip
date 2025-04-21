@@ -26,8 +26,13 @@ def index():
         vardiya = request.form["vardiya"]
         if isim:
             with sqlite3.connect("vardiyalar.db") as con:
-                con.execute("REPLACE INTO vardiyalar (id, isim, vardiya, tarih) VALUES ((SELECT id FROM vardiyalar WHERE isim=? AND tarih=?), ?, ?, ?)",
-                            (isim, isim, vardiya, today))
+               con.execute("""
+    REPLACE INTO vardiyalar (id, isim, vardiya, tarih) 
+    VALUES (
+        (SELECT id FROM vardiyalar WHERE isim=? AND tarih=?), 
+        ?, ?, ?)
+""", (isim, tarih, vardiya, tarih))  # Buradaki parametreler doğru sıralandı
+
 
     with sqlite3.connect("vardiyalar.db") as con:
         kayitlar = con.execute("SELECT isim, vardiya FROM vardiyalar WHERE tarih=?", (today,)).fetchall()
