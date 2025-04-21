@@ -1,43 +1,51 @@
-
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request
 import sqlite3
-from datetime import date
+from datetime import datetime
 
 app = Flask(__name__)
 
-def init_db():
-    with sqlite3.connect("vardiyalar.db") as con:
-        con.execute("""
-        CREATE TABLE IF NOT EXISTS vardiyalar (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            isim TEXT,
-            vardiya TEXT,
-            tarih TEXT
-        )
-        """)
+# Veritabanı bağlantısı
+def get_db_connection():
+    conn = sqlite3.connect('vardiya.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
+# Ana sayfa ve form gönderimi
 @app.route("/", methods=["GET", "POST"])
 def index():
-    init_db()
-    today = date.today().isoformat()
-
     if request.method == "POST":
-        isim = request.form["isim"].strip()
-        vardiya = request.form["vardiya"]
-        if isim:
-            with sqlite3.connect("vardiyalar.db") as con:
-               con.execute("""
-    REPLACE INTO vardiyalar (id, isim, vardiya, tarih) 
-    VALUES (
-        (SELECT id FROM vardiyalar WHERE isim=? AND tarih=?), 
-        ?, ?, ?)
-""", (isim, tarih, vardiya, tarih))  # Buradaki parametreler doğru sıralandı
+        # Formdan verileri al
+        isim = request.form.get("isim")
+        vardiya = request.form.get("vardiya")
+        tarih = datetime.now().strftime("%Y-%m-%d")  # Bugünün tarihi
 
+        # Eğer isim ya da vardiya boşsa, hata döndür
+        if not isim or not vardiya:
+            return "İsim ve vardiya seçimi zorunludur.", 400
 
-    with sqlite3.connect("vardiyalar.db") as con:
-        kayitlar = con.execute("SELECT isim, vardiya FROM vardiyalar WHERE tarih=?", (today,)).fetchall()
+        # Veritabanına bağlan
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    return render_template("index.html", kayitlar=kayitlar)
+        # Kayıt işlemi (varsa güncelle, yoksa yeni ekle)
+        cursor.execute("""
+            INSERT OR REPLACE INTO vardiyalar (isim, vardiya, tarih)
+            VALUES (?, ?, ?)
+        """, (isim, vardiya, tarih))
+
+        # Değişiklikleri kaydet ve bağlantıyı kapat
+        conn.commit()
+        conn.close()
+
+    # Veritabanından tüm verileri çek
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM vardiyalar WHERE tarih = ?", (tarih,))
+    vardiyalar = cursor.fetchall()
+    conn.close()
+
+    # Ana sayfayı render et ve vardiya listelerini gönder
+    return render_template("index.html", vardiyalar=vardiyalar)
 
 if __name__ == "__main__":
     app.run(debug=True)
