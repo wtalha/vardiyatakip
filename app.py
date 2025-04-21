@@ -13,11 +13,12 @@ def get_db_connection():
 # Ana sayfa ve form gönderimi
 @app.route("/", methods=["GET", "POST"])
 def index():
+    tarih = datetime.now().strftime("%Y-%m-%d")  # Bugünün tarihi (GET ve POST isteklerinde kullanılacak)
+
     if request.method == "POST":
         # Formdan verileri al
         isim = request.form.get("isim")
         vardiya = request.form.get("vardiya")
-        tarih = datetime.now().strftime("%Y-%m-%d")  # Bugünün tarihi
 
         # Eğer isim ya da vardiya boşsa, hata döndür
         if not isim or not vardiya:
